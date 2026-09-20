@@ -34,6 +34,17 @@
 #include <string.h>
 #include "aw2033.h"
 
+/* Parse a register address/value argument.  The raw sysfs reg node uses
+ * space-separated hex without a 0x prefix, so "3A", "FF" and "54" are all
+ * plain hex.  Keep accepting the explicit "0x..." spelling too.
+ */
+static unsigned parse_hex(const char *s)
+{
+    if (s[0] == '0' && (s[1] == 'x' || s[1] == 'X'))
+        s += 2;
+    return (unsigned)strtoul(s, NULL, 16);
+}
+
 static void usage(const char *prog)
 {
     printf("usage:\n"
@@ -143,16 +154,9 @@ int main(int argc, char **argv)
         aw_sync_mode(c, atoi(argv[2]));
         printf("syncmode=%s\n", argv[2]);
     } else if (!strcmp(argv[1], "reg") && argc >= 3) {
-        char *end;
-        unsigned a = (unsigned)strtoul(argv[2], &end, 0);
-        if (*end == '\0' && strchr(argv[2], 'x') == NULL &&
-            argv[2][0] != '0')
-            a = (unsigned)strtoul(argv[2], NULL, 16); /* bare digits = hex */
+        unsigned a = parse_hex(argv[2]);
         if (argc >= 4) {
-            unsigned v = (unsigned)strtoul(argv[3], &end, 0);
-            if (*end == '\0' && strchr(argv[3], 'x') == NULL &&
-                argv[3][0] != '0')
-                v = (unsigned)strtoul(argv[3], NULL, 16);
+            unsigned v = parse_hex(argv[3]);
             aw_reg_set(c, (uint8_t)a, (uint8_t)v);
             printf("wrote 0x%02x=0x%02x\n", a, v & 0xFF);
         } else {
